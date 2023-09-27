@@ -7,3 +7,6 @@ client_username = None
 server_ip = None
 server_port = None
 keep_broadcasting = True
+
+test = ""
+
