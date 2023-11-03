@@ -23,7 +23,7 @@ class ChatClient(QMainWindow):
     def initUI(self):
         font = QFont(config.font_family, config.font_size)
         self.setWindowTitle('客户端')
-        self.setGeometry(100, 100, 800, 800)
+        self.setGeometry(100, 100, int(config.desktop_width / 3), int(config.desktop_height / 2))
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
         # 添加服务器信息字段
@@ -76,7 +76,7 @@ class ChatClient(QMainWindow):
     # 通过发送按钮发送一条消息
     def send_message(self):
         message_input = self.input_edit.toPlainText()
-        time.sleep(0.05)
+        # time.sleep(0.05)
 
         if message_input:
             self.input_edit.clear()

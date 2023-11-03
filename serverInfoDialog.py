@@ -1,14 +1,22 @@
 from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QPushButton, \
-    QMessageBox, QLineEdit, QDialog, QLabel
+    QMessageBox, QLineEdit, QDialog, QLabel, QDesktopWidget
 from PyQt5.QtGui import QFont
 import config
 
 
 # 服务端信息输入窗口
+def getDesktopSize():
+    desktop = QDesktopWidget()
+    screen = desktop.screenGeometry()
+    config.desktop_width = screen.width()
+    config.desktop_height = screen.height()
+
+
 class ServerInfoDialog(QDialog):
 
     def __init__(self, parent=None):
         super(ServerInfoDialog, self).__init__(parent)
+        getDesktopSize()            # 初始化屏幕数据
         self.connect_button = None  # 连接按钮
         self.username_label = None  # 标签：用户名
         self.username_edit = None    # 输入框：用户名
@@ -23,6 +31,7 @@ class ServerInfoDialog(QDialog):
                                      QMessageBox.No)
         if reply == QMessageBox.Yes:
             event.accept()
+            exit(0)
         else:
             event.ignore()
 
@@ -30,7 +39,7 @@ class ServerInfoDialog(QDialog):
     def initUI(self):
         font = QFont(config.font_family, config.font_size)
         self.setWindowTitle('服务器连接信息')
-        self.setGeometry(300, 300, 300, 150)
+        self.setGeometry(100, 100, int(config.desktop_width / 7), int(config.desktop_height / 6))
 
         # 标签与输入框设置
         self.server_ip_label = QLabel('地址:')
@@ -42,11 +51,11 @@ class ServerInfoDialog(QDialog):
         self.username_label = QLabel('用户:')
         self.username_label.setFont(font)
         self.username_edit = QLineEdit(self)
-        self.server_ip_edit.setText("192.168.137.1")  # 预设服务器 IP
+        self.server_ip_edit.setText(config.server_ip_set)  # 预设服务器 IP
         self.server_ip_edit.setFont(font)
-        self.server_port_edit.setText("12312")  # 预设端口号
+        self.server_port_edit.setText(config.server_port_set)  # 预设端口号
         self.server_port_edit.setFont(font)
-        self.username_edit.setText("memo-pc")  # 预设用户名
+        self.username_edit.setText(config.client_name_set)  # 预设用户名
         self.username_edit.setFont(font)
 
         # 按钮设置
@@ -75,3 +84,4 @@ class ServerInfoDialog(QDialog):
         vbox.addLayout(hbox4)
 
         self.setLayout(vbox)
+

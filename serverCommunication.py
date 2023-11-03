@@ -1,4 +1,5 @@
 import socket
+
 from PyQt5.QtWidgets import QMessageBox, QWidget
 import config
 import message
@@ -39,20 +40,21 @@ class server_communication(QWidget):
                     # 输入信息不完整，显示错误消息
                     QMessageBox.critical(self, '错误', '信息不完整，请输入用户名、服务器地址和端口')
             except (socket.error, ValueError) as e:
-                print(f"Error: {e}")
                 # 连接失败或输入无效，显示错误消息
-                QMessageBox.critical(self, '错误', '无法连接到服务器，请检查服务器地址和端口')
+                QMessageBox.critical(self, '错误', f'无法连接到服务器，请检查服务器地址和端口:{e}')
 
     # 通知服务器需要读取历史消息
     def load_start(self):
-        self.client_socket.send(config.load_check_start.encode('utf-8'))
+        load_start_len = len(config.load_check_start)
+        self.client_socket.send(f'{load_start_len:08d}{config.load_check_start}'.encode('utf-8'))
+
+    def get_len(self):
+        return self.client_socket.recv(8)
 
     # 从服务器读取一条消息
     def load_one_message(self):
-        debug = self.client_socket.recv(102400).decode('utf-8')
-        print(debug)
-        return debug
-        # return self.client_socket.recv(102400).decode('utf-8')
+        message_len = int(self.get_len())
+        return self.client_socket.recv(message_len).decode('utf-8')
 
     # 向服务器发送一条消息
     def send_one_message(self, client_message):
@@ -62,7 +64,12 @@ class server_communication(QWidget):
     def load_history_message(self, text_edit):
         # 通知服务器端
         self.load_start()
+        cnt = 1
         while True:
+            # 背景颜色间隔
+            color = config.text_color_1 if cnt % 2 == 1 else config.text_color_2
+            cnt = cnt + 1
+
             received_message = self.load_one_message()
             # 读取到结束消息
             if received_message == config.load_check_end:
@@ -70,5 +77,6 @@ class server_communication(QWidget):
             # 读取到普通消息
             else:
                 received_message = message.data_to_text_client(message.message_to_data_client(received_message))
+                # self.append_colored_message(text_edit, received_message, color)
                 text_edit.append(f'{received_message}\n')
         text_edit.append(f'----------以上为历史消息----------\n')
