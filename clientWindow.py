@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, \
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt
 import config
+import message
 from serverCommunication import server_communication
 
 
@@ -76,10 +77,15 @@ class ChatClient(QMainWindow):
     # 通过发送按钮发送一条消息
     def send_message(self):
         message_input = self.input_edit.toPlainText()
-        # time.sleep(0.05)
 
         if message_input:
             self.input_edit.clear()
-            self.server.send_one_message(message_input)
-            # 缓冲
-            time.sleep(0.05)
+
+            # 文件检查与发送
+            message_is_file = message.file_path_check(message_input)
+            print(message_is_file)
+            if message_is_file is not None:
+                self.server.send_one_file(message.file_path_check(message_input))
+            # 文本发送（不存在的文件将以文本发送）
+            else:
+                self.server.send_one_message(message_input)

@@ -33,8 +33,10 @@ def handle_client(client_socket, client_address):
         while True:
             # 等待客户端
             received_message_len = client_socket.recv(8)
+            received_message_type = client_socket.recv(8)
             received_message = client_socket.recv(int(received_message_len)).decode('utf-8')
-            # 这里收到的通过按钮发送的消息不对
+            print(received_message_type)
+
             if not received_message:
                 break
 
@@ -50,16 +52,13 @@ def handle_client(client_socket, client_address):
                     message_len = len(message_str.encode('utf-8'))
                     client_socket.send(f'{message_len:08d}'.encode('utf-8'))
                     client_socket.send(message_str.encode('utf-8'))
-                    # client_socket.send(message_str.encode('utf-8'))
-                    # 缓冲
-                    # time.sleep(cushioning_time)
 
                 # 告知客户端数据流结束
                 end_check_len = len(load_check_end)
                 client_socket.send(f'{end_check_len:08d}{load_check_end}'.encode('utf-8'))
 
             # 接收到客户端文本消息
-            else:
+            elif int(received_message_type) == 0:
                 # 获取时间戳
                 timestamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
 
@@ -77,7 +76,15 @@ def handle_client(client_socket, client_address):
                 # 将消息发送到广播消息队列
                 message_queue.put(message_str)
 
-                # time.sleep(cushioning_time)
+            # 接收到客户端文件发送
+            elif int(received_message_type) > 0:
+                blockNum = received_message_type
+                with open(received_message, 'wb') as file:
+                    for _ in range(int(blockNum)):
+                        data = client_socket.recv(10240)
+                        file.write(data)
+
+                message_queue.put(f'文件{received_message}接收完成')
 
     except ConnectionResetError:
         # 客户端强制关闭连接的异常处理

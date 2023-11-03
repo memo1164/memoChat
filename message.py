@@ -30,9 +30,10 @@ def data_to_text_client(data):
     return f'[{data[0]}] ({data[1]})\n{data[2]}'
 
 
-def data_to_message_client(username, message):
+def data_to_message_client(username, message, file_blockNum):
+    # file_blockNum : 文件块数，0为文本
     message_len = len(f'&{username}#{message}'.encode('utf-8'))
-    return f'{message_len:08d}&{username}#{message}'
+    return f'{message_len:08d}{file_blockNum:08d}&{username}#{message}'
 
 
 def data_to_message_server(username, timestamp, message):
@@ -64,7 +65,7 @@ def message_to_data_server(message_str):
 
 def file_path_check(message=""):
     if message.startswith('file:///') is True:
-        path = message[:8]
+        path = message[8:]
         if os.path.exists(path):
             return path
         else:
