@@ -59,12 +59,14 @@ class server_communication(QWidget):
 
     # 向服务器发送一条消息
     def send_one_message(self, client_message):
-        self.client_socket.send(message.data_to_message_client(config.client_username, client_message, 0).encode('utf-8'))
+        self.client_socket.send(
+            message.data_to_message_client(config.client_username, client_message, 0).encode('utf-8'))
 
     def send_one_file(self, file_path=""):
-        file_name = file_path[file_path.rfind('/') + 1 :]
+        file_name = file_path[file_path.rfind('/') + 1:]
         blockNum = ceil(os.path.getsize(file_path) / 10240)
-        self.client_socket.send(message.data_to_message_client(config.client_username, file_name, blockNum).encode('utf-8'))
+        self.client_socket.send(
+            message.data_to_message_client(config.client_username, file_name, blockNum).encode('utf-8'))
         # 打开要发送的文件分块发送
         with open(file_path, 'rb') as file:
             for _ in range(blockNum):
@@ -75,13 +77,19 @@ class server_communication(QWidget):
     def load_history_message(self, text_edit):
         # 通知服务器端
         self.load_start()
+        # 存储文件信息
+        FileInfo = []
         while True:
             received_message = self.load_one_message()
             # 读取到结束消息
             if received_message == config.load_check_end:
                 break
+                # 读到文件信息
+            elif received_message[0] == '$':
+                FileInfo.append(received_message[1:])
             # 读取到普通消息
             else:
                 received_message = message.data_to_text_client(message.message_to_data_client(received_message))
                 text_edit.append(f'{received_message}\n')
         text_edit.append(f'----------以上为历史消息----------\n')
+        return FileInfo

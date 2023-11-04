@@ -16,8 +16,11 @@ if __name__ == '__main__':
     server.connect_server()
     # 创建程序主界面类
     client_window = ChatClient(client_socket)
-    # 读取历史消息
-    server.load_history_message(client_window.text_edit)
+    # 读取历史消息和文件列表
+    FileInfo = server.load_history_message(client_window.text_edit)
+    # 初始化文件列表
+    client_window.fileDialog.initItem(FileInfo)
+
     client_window.show()
     # 开启接收广播消息线程
     broadcast_t = broadcast_thread(client_socket, client_window.text_edit)

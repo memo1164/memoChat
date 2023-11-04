@@ -1,4 +1,5 @@
 # 待重构
+import os
 import time
 import socket
 import sqlite3
@@ -15,7 +16,7 @@ def handle_client(client_socket, client_address):
     load_check_end = "LOAD_END"
 
     load_len = 30
-    cushioning_time = 0.05
+    file_path = 'G:\\memo\\Code\\memoChat'
 
     # 创建数据库连接
     conn = sqlite3.connect('chat_messages.db')
@@ -49,13 +50,18 @@ def handle_client(client_socket, client_address):
                 for message in reversed(recent_messages):
                     # 数据转换为消息(广播消息格式)
                     message_str = data_to_message(message[1], message[3], message[2])
-                    message_len = len(message_str.encode('utf-8'))
-                    client_socket.send(f'{message_len:08d}'.encode('utf-8'))
-                    client_socket.send(message_str.encode('utf-8'))
+                    send_one_message(client_socket, message_str)
+
+                # 发送文件列表
+                files = os.listdir(file_path)
+                files_list = [file for file in files if os.path.isfile(os.path.join(file_path, file))]
+                for file_name in files_list:
+                    message_str = '$' + file_name
+                    send_one_message(client_socket, message_str)
 
                 # 告知客户端数据流结束
-                end_check_len = len(load_check_end)
-                client_socket.send(f'{end_check_len:08d}{load_check_end}'.encode('utf-8'))
+                message_str = load_check_end
+                send_one_message(client_socket, message_str)
 
             # 接收到客户端文本消息
             elif int(received_message_type) == 0:
@@ -94,6 +100,12 @@ def handle_client(client_socket, client_address):
         # 在无论如何结束线程之前，将客户端从列表中移除
         clients.remove(client_socket)
         client_socket.close()
+
+
+def send_one_message(client_socket, message_str):
+    message_len = len(message_str.encode('utf-8'))
+    client_socket.send(f'{message_len:08d}'.encode('utf-8'))
+    client_socket.send(message_str.encode('utf-8'))
 
 
 # 消息处理
