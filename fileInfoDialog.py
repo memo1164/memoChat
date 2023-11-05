@@ -1,10 +1,13 @@
+import time
+
 import config
-from PyQt5.QtWidgets import QWidget, QListWidget, QScrollBar, QVBoxLayout, QPushButton, QSpacerItem
+from PyQt5.QtWidgets import QWidget, QListWidget, QScrollBar, QVBoxLayout, QPushButton
 
 
 class fileInfoDialog(QWidget):
-    def __init__(self):
+    def __init__(self, server):
         super().__init__()
+        self.server = server
 
         self.vbox = QVBoxLayout(self)
         self.list_widget = QListWidget()
@@ -19,7 +22,6 @@ class fileInfoDialog(QWidget):
         scroll_bar = QScrollBar(self)
         self.list_widget.setVerticalScrollBar(scroll_bar)
         # 创建下载按钮
-        self.downloadButton.clicked.connect(self.push_downloadButton)
         self.downloadButton.setText("Download")
         self.downloadButton.setMinimumHeight(80)
 
@@ -30,9 +32,14 @@ class fileInfoDialog(QWidget):
         for filename in FilesName:
             self.list_widget.addItem(filename)
 
-    def push_downloadButton(self):
+    def push_downloadButton(self, fileTransfer_t):
         currentItem = self.list_widget.currentItem()
         if currentItem is not None:
-            print(currentItem.text())
+            # print(currentItem.text())
+            config.keep_broadcasting = False
+            fileTransfer_t.open(currentItem.text())
         else:
             pass
+
+    def set_downloadButton_connect(self, fileTransfer_t):
+        self.downloadButton.clicked.connect(lambda: self.push_downloadButton(fileTransfer_t))

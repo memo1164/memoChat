@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout, QPushButton, \
     QMessageBox, QLineEdit, QDialog, QLabel, QDesktopWidget
 from PyQt5.QtGui import QFont
 import config
+import os
 
 
 # 服务端信息输入窗口
@@ -24,6 +25,8 @@ class ServerInfoDialog(QDialog):
         self.server_port_edit = None    # 输入框：服务器端口
         self.server_ip_label = None   # 标签：服务器地址
         self.server_ip_edit = None  # 输入框：服务器地址
+        self.filepath_label = None  # 文件路径
+        self.filepath_edit = None
         self.initUI()
 
     def closeEvent(self, event):
@@ -51,12 +54,17 @@ class ServerInfoDialog(QDialog):
         self.username_label = QLabel('用户:')
         self.username_label.setFont(font)
         self.username_edit = QLineEdit(self)
+        self.filepath_label = QLabel('路径:')
+        self.filepath_label.setFont(font)
+        self.filepath_edit = QLineEdit(self)
         self.server_ip_edit.setText(config.server_ip_set)  # 预设服务器 IP
         self.server_ip_edit.setFont(font)
         self.server_port_edit.setText(config.server_port_set)  # 预设端口号
         self.server_port_edit.setFont(font)
         self.username_edit.setText(config.client_name_set)  # 预设用户名
         self.username_edit.setFont(font)
+        self.filepath_edit.setText(os.path.curdir)  # 预设文件地址
+        self.filepath_edit.setFont(font)
 
         # 按钮设置
         self.connect_button = QPushButton('连接', self)
@@ -69,6 +77,7 @@ class ServerInfoDialog(QDialog):
         hbox_serverInfo = QHBoxLayout()
         hbox3 = QHBoxLayout()
         hbox4 = QHBoxLayout()
+        hbox5 = QHBoxLayout()
 
         hbox1.addWidget(self.server_ip_label)
         hbox1.addWidget(self.server_ip_edit)
@@ -77,10 +86,13 @@ class ServerInfoDialog(QDialog):
         hbox3.addWidget(self.username_label)
         hbox3.addWidget(self.username_edit)
         hbox4.addWidget(self.connect_button)
+        hbox5.addWidget(self.filepath_label)
+        hbox5.addWidget(self.filepath_edit)
 
         vbox.addLayout(hbox1)
         vbox.addLayout(hbox_serverInfo)
         vbox.addLayout(hbox3)
+        vbox.addLayout(hbox5)
         vbox.addLayout(hbox4)
 
         self.setLayout(vbox)

@@ -49,7 +49,7 @@ class ChatClient(QMainWindow):
         self.send_button.clicked.connect(self.send_message)
 
         # 创建文件窗口
-        self.fileDialog = fileInfoDialog()
+        self.fileDialog = fileInfoDialog(self.server)
 
         # 创建连接按钮
         # connect_button = QPushButton('连接服务器', central_widget)

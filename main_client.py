@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import QApplication
 from broadcastThread import broadcast_thread
 from clientWindow import ChatClient
 from serverCommunication import server_communication
+from fileTransferThreads import fileTransferThreads
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
@@ -24,4 +25,8 @@ if __name__ == '__main__':
     client_window.show()
     # 开启接收广播消息线程
     broadcast_t = broadcast_thread(client_socket, client_window.text_edit)
+    # 开启文件收发线程并将下载按钮绑定线程
+    fileTransfer_t = fileTransferThreads(client_socket, client_window.text_edit)
+    client_window.fileDialog.set_downloadButton_connect(fileTransfer_t)
+
     sys.exit(app.exec_())

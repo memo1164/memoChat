@@ -19,20 +19,30 @@ class broadcast_thread:
 
     def receive_broadcast(self):
         try:
-            while config.keep_broadcasting:
-                broadcast_message = self.load_one_message()
-                if broadcast_message == config.load_check_end:
-                    time.sleep(1)  # 防止线程忙等待
+            while True:
+                if config.keep_broadcasting:
+                    broadcast_message = self.load_one_message()
+                    if broadcast_message is None:
+                        pass
+                    elif broadcast_message == config.load_check_end:
+                        time.sleep(1)  # 防止线程忙等待
+                    else:
+                        broadcast_message = message.data_to_text_client(
+                            message.message_to_data_client(broadcast_message))
+                        # 将广播消息添加到对话框
+                        with self.text_edit_lock:
+                            self.text_edit.append(f'{broadcast_message}\n')
+                            # 自动滚屏
+                            self.text_edit.moveCursor(QTextCursor.End)
                 else:
-                    broadcast_message = message.data_to_text_client(message.message_to_data_client(broadcast_message))
-                    # 将广播消息添加到对话框
-                    with self.text_edit_lock:
-                        self.text_edit.append(f'{broadcast_message}\n')
-                        # 自动滚屏
-                        self.text_edit.moveCursor(QTextCursor.End)
+                    time.sleep(0.2)
         except Exception as e:
             print(f"Error in receive_broadcast: {e}")
 
     # 从服务器读取一条消息
     def load_one_message(self):
-        return self.client_socket.recv(102400).decode('utf-8')
+        message_len = int(self.client_socket.recv(8))
+        if message_len == 0:
+            return None
+        else:
+            return self.client_socket.recv(message_len).decode('utf-8')

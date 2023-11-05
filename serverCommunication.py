@@ -17,6 +17,7 @@ def get_server_info():
         config.client_username = server_info_dialog.username_edit.text()
         config.server_ip = server_info_dialog.server_ip_edit.text()
         config.server_port = int(server_info_dialog.server_port_edit.text())
+        config.loadFile_path = server_info_dialog.filepath_edit.text()
 
 
 class server_communication(QWidget):
@@ -56,6 +57,19 @@ class server_communication(QWidget):
     def load_one_message(self):
         message_len = int(self.get_len())
         return self.client_socket.recv(message_len).decode('utf-8')
+
+    def load_one_file(self, file_name):
+        # self.fileTransfer_t.open(file_name)
+        # self.client_socket.send(f'{len(file_name)+1:08d}{0:08d}${file_name}'.encode('utf-8'))
+        # # 不知为何收不到 blockNum
+        # blockNum = int(self.client_socket.recv(8).decode('utf-8'))
+        # print(blockNum)
+        #
+        # with open(os.path.join(config.loadFile_path, file_name), 'wb') as file:
+        #     for _ in range(blockNum):
+        #         data = self.client_socket.recv(10240)
+        #         file.write(data)
+        pass
 
     # 向服务器发送一条消息
     def send_one_message(self, client_message):

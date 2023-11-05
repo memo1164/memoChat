@@ -16,3 +16,4 @@ text_color_1 = 'lightblue'
 text_color_2 = 'white'
 desktop_width = None
 desktop_height = None
+loadFile_path = 'G:\\test'

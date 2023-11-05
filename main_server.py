@@ -5,6 +5,7 @@ import socket
 import sqlite3
 import threading
 from queue import Queue
+from math import ceil
 
 # 创建队列用于消息广播
 message_queue = Queue()
@@ -16,7 +17,7 @@ def handle_client(client_socket, client_address):
     load_check_end = "LOAD_END"
 
     load_len = 30
-    file_path = 'G:\\memo\\Code\\memoChat'
+    file_path = os.path.curdir      # 服务器端文件存储路径
 
     # 创建数据库连接
     conn = sqlite3.connect('chat_messages.db')
@@ -36,7 +37,6 @@ def handle_client(client_socket, client_address):
             received_message_len = client_socket.recv(8)
             received_message_type = client_socket.recv(8)
             received_message = client_socket.recv(int(received_message_len)).decode('utf-8')
-            print(received_message_type)
 
             if not received_message:
                 break
@@ -48,7 +48,7 @@ def handle_client(client_socket, client_address):
                 recent_messages = cursor.fetchall()
                 # 遍历查找结果
                 for message in reversed(recent_messages):
-                    # 数据转换为消息(广播消息格式)
+                    # 数据转换为消息(普通消息格式)
                     message_str = data_to_message(message[1], message[3], message[2])
                     send_one_message(client_socket, message_str)
 
@@ -68,32 +68,48 @@ def handle_client(client_socket, client_address):
                 # 获取时间戳
                 timestamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
 
-                print(f'*[{client_address}] {received_message}')
+                # 收到文件下载请求消息
+                if received_message[0] == '$':
+                    file_name = received_message[1:]
+                    if os.path.exists(os.path.join(file_path, file_name)):
+                        send_one_file(client_socket, os.path.join(file_path, file_name))
+                    else:
+                        # 文件不存在则告知分块数量为0
+                        client_socket.send(f'{0:08d}'.encode('utf-8'))
+                        client_socket.send(f'{0:08d}'.encode('utf-8'))
 
-                # 消息转换为数据
-                data = message_to_data(received_message)
-                # 加入数据库
-                cursor.execute("INSERT INTO messages (username, content, timestamp) VALUES (?, ?, ?)",
-                               (data[0], data[1], timestamp))
-                conn.commit()
-                # 数据转换为消息(广播消息格式)
-                message_str = data_to_message(data[0], timestamp, data[1])
-
-                # 将消息发送到广播消息队列
-                message_queue.put(message_str)
+                # 收到普通消息
+                else:
+                    print(f'*[{client_address}] {received_message}')
+                    # 消息转换为数据
+                    data = message_to_data(received_message)
+                    # 加入数据库
+                    cursor.execute("INSERT INTO messages (username, content, timestamp) VALUES (?, ?, ?)",
+                                   (data[0], data[1], timestamp))
+                    conn.commit()
+                    # 数据转换为消息(广播消息格式)
+                    message_str = data_to_broadcast_messages(data[0], timestamp, data[1])
+                    # 将消息发送到广播消息队列
+                    message_queue.put(message_str)
 
             # 接收到客户端文件发送
             elif int(received_message_type) > 0:
-                blockNum = received_message_type
-                with open(received_message, 'wb') as file:
-                    for _ in range(int(blockNum)):
+                file_name = received_message[received_message.find('#') + 1:]
+                blockNum = int(received_message_type)
+                with open(os.path.join(file_path, file_name), 'wb') as file:
+                    for _ in range(blockNum):
                         data = client_socket.recv(10240)
                         file.write(data)
+                # 接收完成消息提示添加到广播队列
+                # message_queue.put(f'{file_name}接收完成!')
+                # message_queue.put(data_to_message(
+                #     "SERVER",
+                #     time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()),
+                #     f'文件 {received_message} 接收完成!'))
 
-                message_queue.put(f'文件{received_message}接收完成')
-
-    except ConnectionResetError:
+    except ConnectionResetError as CE:
         # 客户端强制关闭连接的异常处理
+        print(f'[CLIENT ERROR] {CE}')
         print(f'客户端 {client_address} 关闭连接,现有线程数 {len(clients) - 1}')
 
     finally:
@@ -104,12 +120,31 @@ def handle_client(client_socket, client_address):
 
 def send_one_message(client_socket, message_str):
     message_len = len(message_str.encode('utf-8'))
-    client_socket.send(f'{message_len:08d}'.encode('utf-8'))
-    client_socket.send(message_str.encode('utf-8'))
+    client_socket.send(f'{message_len:08d}{message_str}'.encode('utf-8'))
+
+
+def send_one_file(client_socket, file_path):
+    blockNum = ceil(os.path.getsize(file_path) / 10240)
+    # 会被客户端的广播接收线程吞掉一次8字节的send
+    client_socket.send(f'{0:08d}'.encode('utf-8'))
+    client_socket.send(f'{blockNum:08d}'.encode('utf-8'))
+
+    # 打开要发送的文件分块发送
+    with open(file_path, 'rb') as file:
+        for _ in range(blockNum):
+            data = file.read(10240)
+            client_socket.send(data)
+
+    time.sleep(0.3)
 
 
 # 消息处理
 def data_to_message(username, timestamp, message):
+    # &(用户) !(时间) #(文本)
+    return f'&{username}!{timestamp}#{message}'
+
+
+def data_to_broadcast_messages(username, timestamp, message):
     # &(用户) !(时间) #(文本)
     message_len = len(f'&{username}!{timestamp}#{message}'.encode('utf-8'))
     return f'{message_len:08d}&{username}!{timestamp}#{message}'
