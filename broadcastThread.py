@@ -27,6 +27,7 @@ class broadcast_thread:
                     elif broadcast_message == config.load_check_end:
                         time.sleep(1)  # 防止线程忙等待
                     else:
+                        print(broadcast_message)
                         broadcast_message = message.data_to_text_client(
                             message.message_to_data_client(broadcast_message))
                         # 将广播消息添加到对话框

@@ -17,7 +17,7 @@ def handle_client(client_socket, client_address):
     load_check_end = "LOAD_END"
 
     load_len = 30
-    file_path = os.path.curdir      # 服务器端文件存储路径
+    file_path = os.path.curdir  # 服务器端文件存储路径
 
     # 创建数据库连接
     conn = sqlite3.connect('chat_messages.db')
@@ -101,11 +101,9 @@ def handle_client(client_socket, client_address):
                         data = client_socket.recv(10240)
                         file.write(data)
                 # 接收完成消息提示添加到广播队列
-                # message_queue.put(f'{file_name}接收完成!')
-                # message_queue.put(data_to_message(
-                #     "SERVER",
-                #     time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()),
-                #     f'文件 {received_message} 接收完成!'))
+                timestamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+                message_str = file_received_broadcast_message(file_name, timestamp)
+                message_queue.put(message_str)
 
     except ConnectionResetError as CE:
         # 客户端强制关闭连接的异常处理
@@ -139,6 +137,7 @@ def send_one_file(client_socket, file_path):
 
 
 # 消息处理
+# 注意要以utf8编码取长度
 def data_to_message(username, timestamp, message):
     # &(用户) !(时间) #(文本)
     return f'&{username}!{timestamp}#{message}'
@@ -146,8 +145,15 @@ def data_to_message(username, timestamp, message):
 
 def data_to_broadcast_messages(username, timestamp, message):
     # &(用户) !(时间) #(文本)
-    message_len = len(f'&{username}!{timestamp}#{message}'.encode('utf-8'))
-    return f'{message_len:08d}&{username}!{timestamp}#{message}'
+    message = f'&{username}!{timestamp}#{message}'
+    message_len = len(message.encode('utf-8'))
+    return f'{message_len:08d}{message}'
+
+
+def file_received_broadcast_message(filename, timestamp):
+    message = f'&SERVER!{timestamp}#文件 {filename} 已接收！'
+    message_len = len(message.encode('utf-8'))
+    return f'{message_len:08d}{message}'
 
 
 def message_to_data(message_str):

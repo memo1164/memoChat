@@ -14,7 +14,7 @@ class fileTransferThreads:
         self.client_socket = client_socket
         self.text_edit = text_edit
         self.run_flag = False
-        # 接收队列
+        # 等待接收队列
         self.recvQueue = Queue()
         # 创建一个线程用于文件传输
         self.text_edit_lock = threading.Lock()  # 创建锁对象
@@ -29,13 +29,19 @@ class fileTransferThreads:
     def run(self):
         try:
             while True:
+                # 状态位：连续下载文件（第一次下载后队列中不为空）
                 flag = False
+                # 如果现场开启且队列不为空
                 while self.run_flag and self.recvQueue.empty() is not True:
+                    # 取队头文件执行操作
                     file_name = self.recvQueue.get()
+                    file_name_len = len(file_name.encode('utf-8')) + 1
                     file_path = os.path.join(config.loadFile_path, file_name)
-                    self.client_socket.send(f'{len(file_name) + 1:08d}{0:08d}${file_name}'.encode('utf-8'))
+                    # 向服务器发送文件下载请求
+                    self.client_socket.send(f'{file_name_len:08d}{0:08d}${file_name}'.encode('utf-8'))
+                    # 从服务器获得文件分块数量
                     blockNum = int(self.client_socket.recv(8).decode('utf-8'))
-                    # bug：因为广播线程总会在吞掉8字节后停止，所以服务器端写的发送两次8字节（一次0，一次blockNum），但会导致连续下载文件时（中间不开启广播线程）接收不到正确的 blockNum
+                    # bug：因为广播线程总会在吞掉8字节后才会停止，所以服务器端写的发送两次8字节（一次0，一次blockNum），但会导致连续下载文件时（中间不开启广播线程）接收不到正确的 blockNum
                     if flag is True:
                         blockNum = int(self.client_socket.recv(8).decode('utf-8'))
 
