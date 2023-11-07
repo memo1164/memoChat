@@ -21,13 +21,13 @@ class broadcast_thread:
         try:
             while True:
                 if config.keep_broadcasting:
+                    # 线程被开启
                     broadcast_message = self.load_one_message()
+                    # 空消息跳过处理
                     if broadcast_message is None:
                         pass
-                    elif broadcast_message == config.load_check_end:
-                        time.sleep(1)  # 防止线程忙等待
                     else:
-                        print(broadcast_message)
+                        # print(broadcast_message)
                         broadcast_message = message.data_to_text_client(
                             message.message_to_data_client(broadcast_message))
                         # 将广播消息添加到对话框
