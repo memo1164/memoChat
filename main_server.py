@@ -12,12 +12,17 @@ message_queue = Queue()
 
 
 # 客户端线程
+# 参数：<client_socket对象:socket><客户端地址:str>
+# 返回值：无
 def handle_client(client_socket, client_address):
+    # 规定的关键字
     load_check_start = "LOAD_START"
     load_check_end = "LOAD_END"
 
+    # 读取历史消息的最大长度
     load_len = 30
-    file_path = os.path.curdir  # 服务器端文件存储路径
+    # 服务器端文件存储路径
+    file_path = os.path.curdir
 
     # 创建数据库连接
     conn = sqlite3.connect('chat_messages.db')
@@ -33,16 +38,22 @@ def handle_client(client_socket, client_address):
 
     try:
         while True:
-            # 等待客户端
+            # 等待客户端发送消息 #
+
+            # 接收消息的字节数
             received_message_len = client_socket.recv(8)
+            # 接收消息的类型（大于0为文件类型，此时received_message_type代表文件的分块数量）
             received_message_type = client_socket.recv(8)
+            # 接收消息的文本内容
             received_message = client_socket.recv(int(received_message_len)).decode('utf-8')
 
+            # 空消息处理
             if not received_message:
                 break
 
-            # 客户端消息为请求历史消息
+            # 消息内容为客户端消息为请求历史消息
             if received_message == load_check_start:
+                # 发送历史消息 #
                 # 查找数据库
                 cursor.execute('SELECT * FROM messages ORDER BY timestamp DESC LIMIT ?', (load_len,))
                 recent_messages = cursor.fetchall()
@@ -52,9 +63,11 @@ def handle_client(client_socket, client_address):
                     message_str = data_to_message(message[1], message[3], message[2])
                     send_one_message(client_socket, message_str)
 
-                # 发送文件列表
+                # 发送文件列表 #
+                # 获取并筛选路径下文件列表（目前不支持目录） #
                 files = os.listdir(file_path)
                 files_list = [file for file in files if os.path.isfile(os.path.join(file_path, file))]
+                # 遍历发送
                 for file_name in files_list:
                     message_str = '$' + file_name
                     send_one_message(client_socket, message_str)
@@ -92,7 +105,7 @@ def handle_client(client_socket, client_address):
                     # 将消息发送到广播消息队列
                     message_queue.put(message_str)
 
-            # 接收到客户端文件发送
+            # 客户端发送文件
             elif int(received_message_type) > 0:
                 file_name = received_message[received_message.find('#') + 1:]
                 blockNum = int(received_message_type)
@@ -116,11 +129,19 @@ def handle_client(client_socket, client_address):
         client_socket.close()
 
 
+# 消息发送 #
+
+# 发送一条（未添加头部的）消息文本
+# 参数：<client_socket对象:socket><消息文本:str>
+# 返回值：无
 def send_one_message(client_socket, message_str):
     message_len = len(message_str.encode('utf-8'))
     client_socket.send(f'{message_len:08d}{message_str}'.encode('utf-8'))
 
 
+# 发送单个文件
+# 参数：<client_socket对象:socket><文件路径:str>
+# 返回值：无
 def send_one_file(client_socket, file_path):
     blockNum = ceil(os.path.getsize(file_path) / 10240)
     # 会被客户端的广播接收线程吞掉一次8字节的send
@@ -133,16 +154,23 @@ def send_one_file(client_socket, file_path):
             data = file.read(10240)
             client_socket.send(data)
 
-    time.sleep(0.3)
+    time.sleep(0.1)
 
 
-# 消息处理
-# 注意要以utf8编码取长度
+# 消息文本处理 #
+# 注意要以utf8编码取长度 #
+
+# 数据转消息文本（不添加头部）
+# 参数：<用户名:str><时间戳:str><消息文本:str>
+# 返回值：<消息文本:str>
 def data_to_message(username, timestamp, message):
     # &(用户) !(时间) #(文本)
     return f'&{username}!{timestamp}#{message}'
 
 
+# 数据转广播消息文本（添加头部）
+# 参数：<用户名:str><时间戳:str><消息文本:str>
+# 返回值：<消息文本:str>
 def data_to_broadcast_messages(username, timestamp, message):
     # &(用户) !(时间) #(文本)
     message = f'&{username}!{timestamp}#{message}'
@@ -150,12 +178,18 @@ def data_to_broadcast_messages(username, timestamp, message):
     return f'{message_len:08d}{message}'
 
 
+# 数据文件接受完毕的广播消息文本
+# 参数：<文件名:str><时间戳:str>
+# 返回值：<消息文本:str>
 def file_received_broadcast_message(filename, timestamp):
-    message = f'&SERVER!{timestamp}#文件 {filename} 已接收！'
+    message = f'&SERVER!{timestamp}#文件[{filename}]已接收！'
     message_len = len(message.encode('utf-8'))
     return f'{message_len:08d}{message}'
 
 
+# 消息文本转数据
+# 参数：<消息文本:str>
+# 返回值：[<用户名:str>,<消息文本:str>]
 def message_to_data(message_str):
     # &(用户) #(文本)
     username = ""
@@ -178,7 +212,8 @@ def message_to_data(message_str):
     return [username, message]
 
 
-# 广播线程
+# 广播线程 #
+# 用于将消息队列中的内容广播给所有已连接的客户端
 def broadcast_messages():
     while True:
         # 从消息队列获取消息
@@ -205,19 +240,23 @@ broadcast_thread.start()
 
 
 def main():
+    # 开启主机socket
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     host = '0.0.0.0'
     port = 12312
     server_socket.bind((host, port))
 
-    server_socket.listen(5)
+    # 开启监听并设置挂起的连接队列的最大长度
+    server_socket.listen(10)
     print(f"等待客户端连接在 {host}:{port}")
 
     while True:
+        # 收到连接
         client_socket, client_address = server_socket.accept()
         print(f"连接来自 {client_address} ,现有线程数 {len(clients) + 1}")
         clients.append(client_socket)
 
+        # 为连接的客户端开启线程
         client_handler = threading.Thread(target=handle_client, args=(client_socket, client_address))
         client_handler.start()
 
